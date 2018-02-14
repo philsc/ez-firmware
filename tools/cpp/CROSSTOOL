@@ -1,0 +1,283 @@
+major_version: "1"
+minor_version: "0"
+default_target_cpu: "same_as_host"
+
+# For specifying a toolchain only via --cpu we need the following snippet.
+default_toolchain {
+  cpu: "k8"
+  toolchain_identifier: "local_linux"
+}
+default_toolchain {
+  cpu: "avr"
+  toolchain_identifier: "avr_gcc"
+}
+
+toolchain {
+  abi_version: "local"
+  abi_libc_version: "local"
+  builtin_sysroot: ""
+  compiler: "gcc"
+  host_system_name: "local"
+  needsPic: true
+  supports_gold_linker: true
+  supports_incremental_linker: false
+  supports_fission: false
+  supports_interface_shared_objects: false
+  supports_normalizing_ar: false
+  supports_start_end_lib: false
+  target_libc: "local"
+  target_cpu: "k8"
+  target_system_name: "local"
+  toolchain_identifier: "local_linux"
+
+  tool_path { name: "ar" path: "/usr/bin/ar" }
+  tool_path { name: "compat-ld" path: "/usr/bin/ld" }
+  tool_path { name: "cpp" path: "/usr/bin/cpp" }
+  tool_path { name: "dwp" path: "/usr/bin/dwp" }
+  tool_path { name: "gcc" path: "/usr/bin/gcc" }
+  cxx_flag: "-std=c++1z"
+  linker_flag: "-lstdc++"
+  linker_flag: "-B/usr/bin/"
+
+  # TODO(bazel-team): In theory, the path here ought to exactly match the path
+  # used by gcc. That works because bazel currently doesn't track files at
+  # absolute locations and has no remote execution, yet. However, this will need
+  # to be fixed, maybe with auto-detection?
+  cxx_builtin_include_directory: "/usr/lib/gcc/"
+  cxx_builtin_include_directory: "/usr/local/include"
+  cxx_builtin_include_directory: "/usr/include"
+  tool_path { name: "gcov" path: "/usr/bin/gcov" }
+
+  # C(++) compiles invoke the compiler (as that is the one knowing where
+  # to find libraries), but we provide LD so other rules can invoke the linker.
+  tool_path { name: "ld" path: "/usr/bin/ld" }
+
+  tool_path { name: "nm" path: "/usr/bin/nm" }
+  tool_path { name: "objcopy" path: "/usr/bin/objcopy" }
+  objcopy_embed_flag: "-I"
+  objcopy_embed_flag: "binary"
+  tool_path { name: "objdump" path: "/usr/bin/objdump" }
+  tool_path { name: "strip" path: "/usr/bin/strip" }
+
+  # Anticipated future default.
+  unfiltered_cxx_flag: "-no-canonical-prefixes"
+  unfiltered_cxx_flag: "-fno-canonical-system-headers"
+
+  # Make C++ compilation deterministic. Use linkstamping instead of these
+  # compiler symbols.
+  unfiltered_cxx_flag: "-Wno-builtin-macro-redefined"
+  unfiltered_cxx_flag: "-D__DATE__=\"redacted\""
+  unfiltered_cxx_flag: "-D__TIMESTAMP__=\"redacted\""
+  unfiltered_cxx_flag: "-D__TIME__=\"redacted\""
+
+  # Security hardening on by default.
+  # Conservative choice; -D_FORTIFY_SOURCE=2 may be unsafe in some cases.
+  # We need to undef it before redefining it as some distributions now have
+  # it enabled by default.
+  compiler_flag: "-U_FORTIFY_SOURCE"
+  compiler_flag: "-D_FORTIFY_SOURCE=1"
+  compiler_flag: "-fstack-protector"
+  linker_flag: "-Wl,-z,relro,-z,now"
+
+  # Enable coloring even if there's no attached terminal. Bazel removes the
+  # escape sequences if --nocolor is specified. This isn't supported by gcc
+  # on Ubuntu 14.04.
+  compiler_flag: "-fdiagnostics-color"
+
+  # All warnings are enabled.
+  compiler_flag: "-Wall"
+  compiler_flag: "-Wextra"
+  compiler_flag: "-Werror"
+  # Enable a few more warnings that aren't part of -Wall.
+  compiler_flag: "-Wunused-but-set-parameter"
+  # But disable some that are problematic.
+  compiler_flag: "-Wno-free-nonheap-object" # has false positives
+
+  # Keep stack frames for debugging, even in opt mode.
+  compiler_flag: "-fno-omit-frame-pointer"
+
+  # Anticipated future default.
+  linker_flag: "-no-canonical-prefixes"
+  # Have gcc return the exit code from ld.
+  linker_flag: "-pass-exit-codes"
+  # Gold linker only? Can we enable this by default?
+  linker_flag: "-fuse-ld=gold"
+  linker_flag: "-Wl,--warn-execstack"
+  linker_flag: "-Wl,--detect-odr-violations"
+
+  compilation_mode_flags {
+    mode: DBG
+    # Enable debug symbols.
+    compiler_flag: "-g"
+  }
+  compilation_mode_flags {
+    mode: OPT
+
+    # No debug symbols.
+    # Maybe we should enable https://gcc.gnu.org/wiki/DebugFission for opt or
+    # even generally? However, that can't happen here, as it requires special
+    # handling in Bazel.
+    compiler_flag: "-g0"
+
+    # Conservative choice for -O
+    # -O3 can increase binary size and even slow down the resulting binaries.
+    # Profile first and / or use FDO if you need better performance than this.
+    compiler_flag: "-O2"
+
+    # Disable assertions
+    compiler_flag: "-DNDEBUG"
+
+    # Removal of unused code and data at link time (can this increase binary
+    # size in some cases?).
+    compiler_flag: "-ffunction-sections"
+    compiler_flag: "-fdata-sections"
+    linker_flag: "-Wl,--gc-sections"
+  }
+  linking_mode_flags { mode: DYNAMIC }
+}
+
+toolchain {
+  abi_version: "gcc_7.3"
+  abi_libc_version: "avr_libc_2.0"
+  builtin_sysroot: ""
+  compiler: "gcc"
+  host_system_name: "local"
+  # TODO(phil): Why can I not set this to true?
+  needsPic: false
+  supports_gold_linker: true
+  supports_incremental_linker: false
+  supports_fission: false
+  supports_interface_shared_objects: false
+  supports_normalizing_ar: false
+  supports_start_end_lib: false
+  target_libc: "avr_libc_2.0"
+  target_cpu: "avr"
+  target_system_name: "avr"
+  toolchain_identifier: "avr_gcc"
+
+  # These paths are relative to //tools/cpp. That's why we point to wrapper
+  # scripts. The wrapper scripts can properly point to a folder that's not in
+  # //tools/cpp.
+  tool_path { name: "ar" path: "avr_gcc/avr-ar" }
+  tool_path { name: "compat-ld" path: "avr_gcc/avr-ld" }
+  tool_path { name: "cpp" path: "avr_gcc/avr-cpp" }
+  tool_path { name: "dwp" path: "avr_gcc/avr-dwp" }
+  tool_path { name: "gcc" path: "avr_gcc/avr-gcc" }
+  cxx_flag: "-std=c++17"
+  # We don't have libstdc++ for AVRs unfortunately.
+  # linker_flag: "-lstdc++"
+  linker_flag: "-Bexternal/avr_gcc_toolchain/usr/bin/"
+
+  # TODO(bazel-team): In theory, the path here ought to exactly match the path
+  # used by gcc. That works because bazel currently doesn't track files at
+  # absolute locations and has no remote execution, yet. However, this will need
+  # to be fixed, maybe with auto-detection?
+  cxx_builtin_include_directory: "external/avr_gcc_toolchain/usr/lib/gcc/"
+  cxx_builtin_include_directory: "external/avr_gcc_toolchain/usr/local/include"
+  cxx_builtin_include_directory: "external/avr_gcc_toolchain/usr/include"
+  tool_path { name: "gcov" path: "avr_gcc/avr-gcov" }
+
+  # C(++) compiles invoke the compiler (as that is the one knowing where
+  # to find libraries), but we provide LD so other rules can invoke the linker.
+  tool_path { name: "ld" path: "avr_gcc/avr-ld" }
+
+  tool_path { name: "nm" path: "avr_gcc/avr-nm" }
+  tool_path { name: "objcopy" path: "avr_gcc/avr-objcopy" }
+  objcopy_embed_flag: "-I"
+  objcopy_embed_flag: "binary"
+  tool_path { name: "objdump" path: "avr_gcc/avr-objdump" }
+  tool_path { name: "strip" path: "avr_gcc/avr-strip" }
+
+  # Anticipated future default.
+  unfiltered_cxx_flag: "-no-canonical-prefixes"
+  unfiltered_cxx_flag: "-fno-canonical-system-headers"
+
+  # Make C++ compilation deterministic. Use linkstamping instead of these
+  # compiler symbols.
+  unfiltered_cxx_flag: "-Wno-builtin-macro-redefined"
+  unfiltered_cxx_flag: "-D__DATE__=\"redacted\""
+  unfiltered_cxx_flag: "-D__TIMESTAMP__=\"redacted\""
+  unfiltered_cxx_flag: "-D__TIME__=\"redacted\""
+
+  # Security hardening on by default.
+  # Conservative choice; -D_FORTIFY_SOURCE=2 may be unsafe in some cases.
+  # We need to undef it before redefining it as some distributions now have
+  # it enabled by default.
+  compiler_flag: "-U_FORTIFY_SOURCE"
+  compiler_flag: "-D_FORTIFY_SOURCE=1"
+  # compiler_flag: "-fstack-protector"
+  # linker_flag: "-Wl,-z,relro,-z,now"
+
+  # Enable coloring even if there's no attached terminal. Bazel removes the
+  # escape sequences if --nocolor is specified. This isn't supported by gcc
+  # on Ubuntu 14.04.
+  compiler_flag: "-fdiagnostics-color"
+
+  # All warnings are enabled.
+  compiler_flag: "-Wall"
+  compiler_flag: "-Wextra"
+  compiler_flag: "-Werror"
+  # Enable a few more warnings that aren't part of -Wall.
+  compiler_flag: "-Wunused-but-set-parameter"
+  # But disable some that are problematic.
+  compiler_flag: "-Wno-free-nonheap-object" # has false positives
+
+  # Keep stack frames for debugging, even in opt mode.
+  compiler_flag: "-fno-omit-frame-pointer"
+
+  # Anticipated future default.
+  linker_flag: "-no-canonical-prefixes"
+  # Have gcc return the exit code from ld.
+  linker_flag: "-pass-exit-codes"
+  # Gold linker only? Can we enable this by default?
+  # linker_flag: "-fuse-ld=gold"
+  # linker_flag: "-Wl,--warn-execstack"
+  # linker_flag: "-Wl,--detect-odr-violations"
+
+  compiler_flag: "-mmcu=atmega32u4"
+  compiler_flag: "-DMCU=atmega32u4"
+  compiler_flag: "-DARCH=ARCH_AVR8"
+  compiler_flag: "-DF_CPU=16000000"
+  compiler_flag: "-DF_USB=F_CPU"
+  compiler_flag: "-DBOOTLOADER=halfkay"
+  compiler_flag: "-DBOOTLOADER_SIZE=512"
+  compiler_flag: "-DUSB_DEVICE_ONLY"
+  compiler_flag: "-DUSE_FLASH_DESCRIPTORS"
+  compiler_flag: "-DUSE_STATIC_OPTIONS=\"(USB_DEVICE_OPT_FULLSPEED | USB_OPT_REG_ENABLED | USB_OPT_AUTO_PLL)\""
+  compiler_flag: "-DUSB_DEVICE_ONLY"
+  compiler_flag: "-DFIXED_CONTROL_ENDPOINT_SIZE=8"
+  compiler_flag: "-DFIXED_NUM_CONFIGURATIONS=1"
+  compiler_flag: "-DPROTOCOL_LUFA"
+  # TODO(phil): Add these:
+  # -Wstrict-prototypes
+
+  compilation_mode_flags {
+    mode: DBG
+    # Enable debug symbols.
+    compiler_flag: "-g"
+  }
+  compilation_mode_flags {
+    mode: OPT
+
+    # No debug symbols.
+    # Maybe we should enable https://gcc.gnu.org/wiki/DebugFission for opt or
+    # even generally? However, that can't happen here, as it requires special
+    # handling in Bazel.
+    compiler_flag: "-g0"
+
+    # Conservative choice for -O
+    # -O3 can increase binary size and even slow down the resulting binaries.
+    # Profile first and / or use FDO if you need better performance than this.
+    compiler_flag: "-O2"
+
+    # Disable assertions
+    compiler_flag: "-DNDEBUG"
+
+    # Removal of unused code and data at link time (can this increase binary
+    # size in some cases?).
+    compiler_flag: "-ffunction-sections"
+    compiler_flag: "-fdata-sections"
+    linker_flag: "-Wl,--gc-sections"
+  }
+  linking_mode_flags { mode: DYNAMIC }
+}

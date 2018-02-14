@@ -1,0 +1,3 @@
+#!/bin/bash --norc
+
+exec external/avr_gcc_toolchain/usr/bin/avr-nm "$@"
