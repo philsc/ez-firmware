@@ -15,3 +15,12 @@ To build for AVR you need to specify the `--cpu` argument:
 ```bash
 bazel build -c opt --cpu=avr //...
 ```
+
+For [YouCompleteMe](https://valloric.github.io/YouCompleteMe/#intro)
+integration create a symlink to
+[contrib/ycm_extra_conf.py](contrib/ycm_extra_conf.py) to the top-level of the
+repo.
+```bash
+ln -s contrib/ycm_extra_conf.py .ycm_extra_conf.py
+```
+Note the fact that you're creating a hidden file here.
