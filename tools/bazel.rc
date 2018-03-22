@@ -1,4 +1,4 @@
 build --host_crosstool_top=//tools/cpp:toolchain
 build --crosstool_top //tools/cpp:toolchain
-build --spawn_strategy=sandboxed
+build --spawn_strategy=linux-sandbox
 build --auto_cpu_environment_group=//tools:cpus
